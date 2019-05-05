@@ -1,9 +1,9 @@
 spring:
   influxdb:
-    url: http://localhost:8086
-    username: user
-    password: ~
-    database: test
+    url: http://127.0.0.1:8086
+    username: admin
+    password: admin
+    database: yhh
     retention-policy: autogen
     connect-timeout: 5
     read-timeout: 5
