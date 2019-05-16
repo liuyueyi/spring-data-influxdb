@@ -77,6 +77,11 @@ public class InfluxDBTemplate<T> extends InfluxDBAccessor implements InfluxDBOpe
     }
 
     @Override
+    public void write(String database, String retention, T... payload) {
+        write(database, retention, Arrays.asList(payload));
+    }
+
+    @Override
     public void write(final List<T> payload) {
         final String database = getDatabase();
         write(database, payload);
@@ -85,8 +90,14 @@ public class InfluxDBTemplate<T> extends InfluxDBAccessor implements InfluxDBOpe
     @Override
     public void write(String database, List<T> payload) {
         final String retentionPolicy = getConnectionFactory().getProperties().getRetentionPolicy();
-        final BatchPoints ops = BatchPoints.database(database).retentionPolicy(retentionPolicy)
-                .consistency(InfluxDB.ConsistencyLevel.ALL).build();
+        write(database, retentionPolicy, payload);
+    }
+
+    @Override
+    public void write(String database, String retention, List<T> payload) {
+        final BatchPoints ops =
+                BatchPoints.database(database).retentionPolicy(retention).consistency(InfluxDB.ConsistencyLevel.ALL)
+                        .build();
         payload.forEach(t -> converter.convert(t).forEach(ops::point));
         getConnection().write(ops);
     }

@@ -41,6 +41,8 @@ public interface InfluxDBOperations<T> {
 
     void write(final String database, final T... payload);
 
+    void write(final String database, final String retention, final T... payload);
+
     /**
      * Write a set of measurements to the database.
      *
@@ -49,6 +51,8 @@ public interface InfluxDBOperations<T> {
     void write(final List<T> payload);
 
     void write(final String database, final List<T> payload);
+    
+    void write(final String database, final String retention, final List<T> payload);
 
     /**
      * Executes a query against the database.
