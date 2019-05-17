@@ -43,7 +43,7 @@ public class Application implements CommandLineRunner {
     @Measurement(database = "yhh", name = "cpu")
     public static class CPU {
         @Column(name = "time")
-        private String time;
+        private Long time;
 
         @Column(name = "tenant", tag = true)
         private String tenant;
@@ -60,18 +60,18 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(final String... args) throws Exception {
-        // Create database...
-        influxDBTemplate.createDatabase();
-
-        // Create some data...
-        final Point p1 = Point.measurement("cpu").time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-                .tag("tenant", "default").addField("idle", 90L).addField("user", 9L).addField("system", 1L)
-                .addField("price", new BigDecimal(100.24).setScale(4, RoundingMode.CEILING)).build();
-
-        final Point p2 = Point.measurement("disk").time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-                .tag("tenant", "default").addField("used", 80L).addField("free", 1L)
-                .addField("price", new BigDecimal(67.72).setScale(4, RoundingMode.CEILING)).build();
-        influxDBTemplate.write(p1, p2);
+//        // Create database...
+//        influxDBTemplate.createDatabase();
+//
+//        // Create some data...
+//        final Point p1 = Point.measurement("cpu").time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+//                .tag("tenant", "default").addField("idle", 90L).addField("user", 9L).addField("system", 1L)
+//                .addField("price", new BigDecimal(100.24).setScale(4, RoundingMode.CEILING)).build();
+//
+//        final Point p2 = Point.measurement("disk").time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+//                .tag("tenant", "default").addField("used", 80L).addField("free", 1L)
+//                .addField("price", new BigDecimal(67.72).setScale(4, RoundingMode.CEILING)).build();
+//        influxDBTemplate.write(p1, p2);
 
         List<CPU> result = influxDBTemplate
                 .queryForObject(new Query("select * from cpu", influxDBTemplate.getDatabase()), CPU.class);

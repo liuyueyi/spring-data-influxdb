@@ -218,6 +218,10 @@ public class BigDecimalInfluxDBResultMapper {
         return parseSeriesAs(series, clazz, result, TimeUnit.MILLISECONDS);
     }
 
+    private boolean timeColumn(String column) {
+        return "time".equals(column);
+    }
+
     <T> List<T> parseSeriesAs(final QueryResult.Series series, final Class<T> clazz, final List<T> result,
             final TimeUnit precision) {
         int columnSize = series.getColumns().size();
@@ -232,7 +236,8 @@ public class BigDecimalInfluxDBResultMapper {
                         if (object == null) {
                             object = clazz.newInstance();
                         }
-                        setFieldValue(object, correspondingField, row.get(i), precision);
+                        setFieldValue(object, correspondingField, row.get(i), precision,
+                                timeColumn(series.getColumns().get(i)));
                     }
                 }
                 // When the "GROUP BY" clause is used, "tags" are returned as Map<String,String> and
@@ -244,7 +249,7 @@ public class BigDecimalInfluxDBResultMapper {
                         Field correspondingField = colNameAndFieldMap.get(entry.getKey()/*InfluxDB columnName*/);
                         if (correspondingField != null) {
                             // I don't think it is possible to reach here without a valid "object"
-                            setFieldValue(object, correspondingField, entry.getValue(), precision);
+                            setFieldValue(object, correspondingField, entry.getValue(), precision, false);
                         }
                     }
                 }
@@ -271,8 +276,8 @@ public class BigDecimalInfluxDBResultMapper {
      * @throws IllegalArgumentException
      * @throws IllegalAccessException
      */
-    <T> void setFieldValue(final T object, final Field field, final Object value, final TimeUnit precision)
-            throws IllegalArgumentException, IllegalAccessException {
+    <T> void setFieldValue(final T object, final Field field, final Object value, final TimeUnit precision,
+            boolean timeColumn) throws IllegalArgumentException, IllegalAccessException {
         if (value == null) {
             return;
         }
@@ -282,8 +287,8 @@ public class BigDecimalInfluxDBResultMapper {
                 field.setAccessible(true);
             }
             if (fieldValueModified(fieldType, field, object, value, precision) ||
-                    fieldValueForPrimitivesModified(fieldType, field, object, value) ||
-                    fieldValueForPrimitiveWrappersModified(fieldType, field, object, value)) {
+                    fieldValueForPrimitivesModified(fieldType, field, object, value, timeColumn) ||
+                    fieldValueForPrimitiveWrappersModified(fieldType, field, object, value, timeColumn)) {
                 return;
             }
             String msg = "Class '%s' field '%s' is from an unsupported type '%s'.";
@@ -326,7 +331,7 @@ public class BigDecimalInfluxDBResultMapper {
     }
 
     <T> boolean fieldValueForPrimitivesModified(final Class<?> fieldType, final Field field, final T object,
-            final Object value) throws IllegalArgumentException, IllegalAccessException {
+            final Object value, final boolean time) throws IllegalArgumentException, IllegalAccessException {
         if (double.class.isAssignableFrom(fieldType)) {
             field.setDouble(object, (Double) value);
             return true;
@@ -343,21 +348,21 @@ public class BigDecimalInfluxDBResultMapper {
             field.setBoolean(object, Boolean.valueOf(String.valueOf(value)));
             return true;
         }
-        if (BigDecimal.class.isAssignableFrom(fieldType)) {
-            field.set(object, new BigDecimal(String.valueOf(value)));
-            return true;
-        }
         return false;
     }
 
     <T> boolean fieldValueForPrimitiveWrappersModified(final Class<?> fieldType, final Field field, final T object,
-            final Object value) throws IllegalArgumentException, IllegalAccessException {
+            final Object value, final boolean time) throws IllegalArgumentException, IllegalAccessException {
         if (Double.class.isAssignableFrom(fieldType)) {
             field.set(object, value);
             return true;
         }
         if (Long.class.isAssignableFrom(fieldType)) {
-            field.set(object, ((Double) value).longValue());
+            if (time) {
+                field.set(object, str2time(String.valueOf(value)));
+            } else {
+                field.set(object, ((Double) value).longValue());
+            }
             return true;
         }
         if (Integer.class.isAssignableFrom(fieldType)) {
@@ -373,6 +378,11 @@ public class BigDecimalInfluxDBResultMapper {
             return true;
         }
         return false;
+    }
+
+    private long str2time(String formatTime) {
+        Instant instant = Instant.from(RFC3339_FORMATTER.parse(formatTime));
+        return instant.getEpochSecond() * 1000L + instant.getNano() / 1000000L;
     }
 
     private Long toMillis(final long value, final TimeUnit precision) {
